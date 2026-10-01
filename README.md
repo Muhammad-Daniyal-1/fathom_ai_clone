@@ -1,83 +1,124 @@
 # Brief — AI meeting notetaker (Fathom-class reconstruction)
 
-**Brief** is a 24-hour hackathon rebuild of an AI meeting notetaker in the spirit of [Fathom](https://fathom.video), with one deliberate product improvement:
+**Brief** turns conversations into structured decisions, commitments, risks and unresolved questions — grounded back to what was actually said.
 
-## Reliable Meeting Outcomes
+## Fathom reconstruction
 
-Instead of letting important agreements live only inside AI summary prose, Brief represents them as **persistent, typed, evidence-linked objects**:
+Working product surfaces:
 
-- Decision  
-- Commitment (owner · due · status)  
-- Risk  
-- Decision change  
-- Open question  
+- My Meetings
+- Meeting detail
+- Enhanced Summary
+- Action Items
+- Transcript
+- Media player + playback ↔ transcript sync
+- Follow playback / highlighting / search
+- Ask (seeded + live)
+- Public share route
 
-Clicking **Evidence** opens the Transcript tab, seeks audio to the source utterance, highlights it, and scrolls it into view.
+## Improvement — Reliable Meeting Outcomes
 
-Action Items are derived from the **same seeded source** as Outcomes, so the surfaces stay consistent.
+Important meeting information becomes typed, evidence-linked objects:
 
----
+- **Decision**
+- **Commitment** (owner · due · status)
+- **Risk**
+- **Decision change**
+- **Open question**
 
-## What we intentionally stubbed
+Clicking **Evidence** opens Transcript, seeks (when audio exists), highlights, and scrolls to the source utterance.
 
-The assignment allows faking the meeting-recording bot. After hands-on recon, we **did not build**:
+**Action Items are derived from the same canonical outcomes** (commitments / next steps) — not a second conflicting LLM pass.
 
-- Desktop app / Chrome extension / live Meet·Zoom·Teams capture  
-- Calendar OAuth / onboarding permissions theater  
-- Production ASR / diarization / live LLM summarization  
+## Live AI (Groq Cloud)
 
-We invested that time in the **post-meeting review loop**: library, detail, player ↔ transcript sync, Enhanced Summary, Action Items, Outcomes, Ask (deterministic), search, and public share.
+- Provider: **Groq Cloud** (`https://api.groq.com/openai/v1`)
+- Model: `openai/gpt-oss-120b` (override with `GROQ_MODEL`)
+- API key: server-side only via `GROQ_API_KEY` (never `NEXT_PUBLIC_`)
 
-Research notes: [`recon/`](./recon/) (frozen after session 01).
+### What live AI does
 
----
+1. **Analyze Meeting** — paste any compatible transcript (or load the Q4 example)
+2. Deterministic utterance parser assigns IDs (`u1`, `u2`, …)
+3. One Groq call returns canonical structured intelligence
+4. Server validates evidence IDs against the parsed transcript
+5. Generated meeting appears in My Meetings (localStorage) and uses the same detail UI
+6. **Ask This Call** — arbitrary grounded Q&A with clickable evidence
 
-## Demo walkthrough (~3–5 min)
+### Architecture
 
-1. Open **My Meetings** — three seeded meetings.  
-2. Open **Atlas Dashboard Weekly Sync**.  
-3. Skim **Enhanced Summary**.  
-4. Open **Action Items** (populated, consistent).  
-5. Scroll to **Reliable Meeting Outcomes** on the Summary tab.  
-6. Click evidence on Daniyal’s commitment → transcript + audio seek.  
-7. Hit **Follow playback** and play — active utterance tracks.  
-8. Ask a suggested **Ask Brief** question.  
-9. Open **Share** (`/share/atlas-weekly`) in an incognito window.
+```
+Transcript
+  → deterministic utterance parser (app-owned IDs)
+  → Groq canonical analysis
+  → server validation (drop fabricated evidence IDs)
+  → Summary + Action Items + Outcomes (one understanding layer)
+  → grounded Ask
+```
 
----
+## Intentionally stubbed
 
-## Live links
+Capture was intentionally stubbed under the hackathon allowance. We did **not** build:
 
-- **Public repo:** https://github.com/Muhammad-Daniyal-1/fathom_ai_clone
-- **Live demo (GitHub Pages):** https://muhammad-daniyal-1.github.io/fathom_ai_clone/
-- **Share example:** https://muhammad-daniyal-1.github.io/fathom_ai_clone/share/atlas-weekly/
-- Local: `npm run dev` or `GITHUB_PAGES=true npm run build && npx serve out`
+- Desktop app / browser extension / live Meet·Zoom·Teams capture
+- Calendar OAuth theater
+- Production ASR / diarization / live speech-to-text
 
-## Stack
+Effort went into post-meeting intelligence and reliability.
 
-- Next.js 15 (App Router) · TypeScript · Tailwind CSS v4  
-- Deterministic TypeScript seed data (`src/data/meetings.ts`)  
-- No database · no ORM · no vector/RAG stack · no LangChain  
+Seeded meetings remain as a deterministic fallback if Groq is unavailable.
+
+## Local setup
 
 ```bash
+cp .env.example .env.local
+# set GROQ_API_KEY=... and optionally GROQ_MODEL=openai/gpt-oss-120b
+
 npm install
 npm run dev
 # http://localhost:3000
 ```
 
+Smoke-test analysis:
+
 ```bash
-npm run build && npm start
+curl -sS http://localhost:3000/api/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"Smoke","transcript":"Daniyal [00:00]:\nI will finish the dashboard by Friday."}'
 ```
 
----
+## Deploy (primary: Vercel)
 
-## Agent capture (assignment requirement)
+Static GitHub Pages cannot run secure server-side Groq routes. **Primary live app = Vercel.**
 
-Cursor hooks capture prompts/responses into [`.agent-logs/`](./.agent-logs/).  
-Verification: [`CAPTURE-TEST.md`](./CAPTURE-TEST.md).
+Set environment variables in the Vercel project:
 
----
+- `GROQ_API_KEY`
+- `GROQ_MODEL=openai/gpt-oss-120b`
 
-## Product identity
+```bash
+npx vercel --prod
+```
 
-Fathom was **reference material**, not our brand. Brief is a dark, premium meeting-intelligence UI inspired by the verified interaction model (My Meetings · Summary / Action Items / Transcript · player + Ask rail · Follow playback).
+GitHub Pages remains a static fallback for the seeded UI only (`GITHUB_PAGES=true npm run build`) and will not include live Analyze/Ask.
+
+## Demo walkthrough (~5 min)
+
+1. Open Brief → My Meetings  
+2. Open **Atlas Dashboard Weekly Sync** — Summary, Action Items, Transcript sync  
+3. Reliable Meeting Outcomes → click Evidence  
+4. **Analyze Meeting** → Load example (**Q4 Mobile Launch Review**)  
+5. Say: “This result is not precomputed.” → Analyze  
+6. Open generated meeting → commitments / risks / decision change / open question  
+7. Click evidence on an outcome  
+8. Ask: “Why did the launch date change?” → click answer evidence  
+
+## Stack
+
+- Next.js 15 (App Router) · TypeScript · Tailwind CSS v4  
+- Groq OpenAI-compatible API (no LangChain / no vector DB)  
+- localStorage for generated meetings  
+
+## Agent capture
+
+Cursor hooks write to [`.agent-logs/`](./.agent-logs/). See [`CAPTURE-TEST.md`](./CAPTURE-TEST.md).
