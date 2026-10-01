@@ -12,12 +12,24 @@ import {
 } from "@/data/meetings";
 import { productName } from "@/lib/brand";
 import { searchMeetings } from "@/lib/search";
-import { loadGeneratedMeetings } from "@/lib/generated-meetings";
+import { loadGeneratedMeetings, saveGeneratedMeeting } from "@/lib/generated-meetings";
 import { signOutToHome } from "@/lib/auth-actions";
 import type { DashboardUser } from "@/lib/dashboard-user";
 import type { Meeting, MeetingOutcome } from "@/data/types";
 
 const SEEDED_IDS = new Set(meetings.map((m) => m.id));
+
+function meetingKind(m: Meeting): "demo" | "captured" | "ai" {
+  if (SEEDED_IDS.has(m.id) || m.source === "demo") return "demo";
+  if (
+    m.source === "recall" ||
+    m.id.startsWith("recall-") ||
+    m.groupLabel === "Captured"
+  ) {
+    return "captured";
+  }
+  return "ai";
+}
 
 function WaveThumb({ hue, durationSec }: { hue: number; durationSec: number }) {
   return (
@@ -127,19 +139,39 @@ export function MyMeetingsHome({ user }: { user: DashboardUser }) {
         if (!res.ok) return;
         const data = (await res.json()) as {
           meetings?: Array<{
+            id: string;
+            title: string;
+            createdAt: string;
             meeting: Meeting;
             participants: Parameters<typeof registerParticipants>[0];
+            utterances?: import("@/lib/ai/schemas").ParsedUtterance[];
+            analysis?: import("@/lib/ai/schemas").CanonicalAnalysis | null;
           }>;
         };
         for (const row of data.meetings ?? []) {
           registerParticipants(row.participants ?? []);
+          // Bridge ephemeral server store → durable browser library.
+          if (row.analysis && row.utterances?.length) {
+            const meeting: Meeting = {
+              ...row.meeting,
+              source: row.meeting.source ?? "recall",
+              groupLabel: row.meeting.groupLabel || "Captured",
+            };
+            saveGeneratedMeeting({
+              id: row.id || meeting.id,
+              title: row.title || meeting.title,
+              createdAt: row.createdAt || new Date().toISOString(),
+              meeting,
+              participants: row.participants ?? [],
+              utterances: row.utterances,
+              analysis: row.analysis,
+              source: "recall",
+            });
+          }
         }
-        setGenerated((prev) => {
-          const captured = (data.meetings ?? []).map((m) => m.meeting);
-          const byId = new Map(prev.map((m) => [m.id, m]));
-          for (const m of captured) byId.set(m.id, m);
-          return Array.from(byId.values());
-        });
+        const refreshed = loadGeneratedMeetings();
+        for (const s of refreshed) registerParticipants(s.participants);
+        setGenerated(refreshed.map((s) => s.meeting));
       } catch {
         // offline / unauthenticated — keep local generated only
       }
@@ -300,8 +332,7 @@ export function MyMeetingsHome({ user }: { user: DashboardUser }) {
                 </div>
                 <ul className="space-y-2">
                   {items.map((m) => {
-                    const isDemo = SEEDED_IDS.has(m.id);
-                    const isAi = !m.audioSrc;
+                    const kind = meetingKind(m);
                     return (
                       <li key={m.id}>
                         <Link
@@ -317,12 +348,17 @@ export function MyMeetingsHome({ user }: { user: DashboardUser }) {
                               <div className="truncate font-medium">
                                 {m.title}
                               </div>
-                              {isDemo && (
+                              {kind === "demo" && (
                                 <span className="shrink-0 rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)]">
                                   Demo
                                 </span>
                               )}
-                              {isAi && !isDemo && (
+                              {kind === "captured" && (
+                                <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300">
+                                  Captured
+                                </span>
+                              )}
+                              {kind === "ai" && (
                                 <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--accent)]">
                                   AI
                                 </span>

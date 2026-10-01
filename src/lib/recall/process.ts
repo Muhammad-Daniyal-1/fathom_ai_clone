@@ -1,7 +1,8 @@
 import { analyzeMeeting } from "@/lib/ai/groq";
 import type { CanonicalAnalysis } from "@/lib/ai/schemas";
 import { analysisToMeeting } from "@/lib/ai/to-meeting";
-import { downloadJson, RecallClient } from "./client";
+import { downloadJson, RecallClient, type RecallBot } from "./client";
+import { firstBotRecording } from "./recordings";
 import {
   findCapturedByBotId,
   findIntentByBotId,
@@ -25,6 +26,13 @@ type WebhookPayload = {
     last_updated_ts?: string;
   };
 };
+
+function meetingUrlFromBot(bot: RecallBot): string {
+  if (typeof bot.meeting_url === "string") return bot.meeting_url;
+  return "";
+}
+
+export { firstBotRecording };
 
 function mapBotStatus(event: string, code?: string): BotLaunchStatus | null {
   const key = event || (code ? `bot.${code}` : "");
@@ -218,6 +226,13 @@ export async function finalizeTranscript(args: {
   if (botId) {
     const existing = await findCapturedByBotId(botId);
     if (existing) {
+      const intent = await findIntentByBotId(botId);
+      if (intent?.createdByEmail && !existing.createdByEmail) {
+        await updateStore((store) => {
+          const row = store.captured.find((c) => c.botId === botId);
+          if (row) row.createdByEmail = intent.createdByEmail;
+        });
+      }
       await patchIntentByBotId(botId, {
         status: "ready",
         meetingId: existing.id,
@@ -243,13 +258,9 @@ export async function finalizeTranscript(args: {
 
   if (!downloadUrl && botId) {
     const bot = await args.client.getBot(botId);
-    const rec = bot.recordings?.[0];
+    const rec = firstBotRecording(bot);
     recordingId = rec?.id ?? recordingId;
-    const shortcuts = rec?.media_shortcuts as
-      | {
-          transcript?: { id?: string; data?: { download_url?: string } };
-        }
-      | undefined;
+    const shortcuts = rec?.media_shortcuts;
     transcriptId = shortcuts?.transcript?.id ?? transcriptId;
     downloadUrl = shortcuts?.transcript?.data?.download_url;
   }
@@ -298,6 +309,7 @@ export async function finalizeTranscript(args: {
     analysis,
   });
   meeting.groupLabel = "Captured";
+  meeting.source = "recall";
   meeting.description =
     analysis.summary.purpose ||
     "Meeting captured by Brief Notetaker (Recall.ai).";
@@ -310,6 +322,7 @@ export async function finalizeTranscript(args: {
     title,
     meetingUrl: intent?.meetingUrl || "",
     createdAt: new Date().toISOString(),
+    createdByEmail: intent?.createdByEmail ?? null,
     meeting,
     participants,
     utterances,
@@ -374,12 +387,25 @@ export async function ensureCapturedMeetingFromBot(
     return { meetingId: null, status: "fatal" };
   }
 
-  const recording = bot.recordings?.[0];
-  const shortcuts = recording?.media_shortcuts as
-    | {
-        transcript?: { id?: string; data?: { download_url?: string } };
+  const recording = firstBotRecording(bot);
+  const shortcuts = recording?.media_shortcuts;
+  const meetingUrl = meetingUrlFromBot(bot);
+
+  // Keep intent title/url fresh when recovering orphans from Recall.
+  if (meetingUrl || bot.bot_name) {
+    await updateStore((store) => {
+      const row = store.intents.find((i) => i.botId === botId);
+      if (!row) return;
+      if (meetingUrl && !row.meetingUrl) row.meetingUrl = meetingUrl;
+      if (
+        (!row.title || row.title === "Captured meeting") &&
+        meetingUrl
+      ) {
+        row.title = titleFromMeetingUrl(meetingUrl);
       }
-    | undefined;
+      row.updatedAt = new Date().toISOString();
+    });
+  }
 
   if (shortcuts?.transcript?.data?.download_url || shortcuts?.transcript?.id) {
     const meetingId = await finalizeTranscript({
@@ -391,7 +417,7 @@ export async function ensureCapturedMeetingFromBot(
     return { meetingId, status: "ready" };
   }
 
-  if (recording?.id && (latest === "done" || latest === "call_ended")) {
+  if (recording?.id && (latest === "done" || latest === "call_ended" || latest === "recording_done")) {
     await patchIntentByBotId(botId, {
       status: "transcribing",
       recordingId: recording.id,

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { productName } from "@/lib/brand";
 import { saveGeneratedMeeting } from "@/lib/generated-meetings";
 import type { CanonicalAnalysis, ParsedUtterance } from "@/lib/ai/schemas";
@@ -42,26 +43,38 @@ const STATUS_LABELS: Record<string, string> = {
   fatal: "Fatal error",
 };
 
-function persistMeeting(payload: MeetingPayload) {
-  if (!payload.analysis) return;
+function persistMeeting(payload: MeetingPayload): string | null {
+  if (!payload.analysis) return null;
+  const meeting: Meeting = {
+    ...payload.meeting,
+    source: payload.meeting.source ?? "recall",
+    groupLabel: payload.meeting.groupLabel || "Captured",
+  };
   saveGeneratedMeeting({
     id: payload.id,
     title: payload.title,
     createdAt: payload.createdAt,
-    meeting: payload.meeting,
+    meeting,
     participants: payload.participants,
     utterances: payload.utterances,
     analysis: payload.analysis,
+    source: "recall",
   });
+  return payload.id;
 }
 
 export function CaptureBotClient() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [meetingUrl, setMeetingUrl] = useState("");
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [intents, setIntents] = useState<Intent[]>([]);
   const [activeBotId, setActiveBotId] = useState<string | null>(null);
+  const [readyMeetingId, setReadyMeetingId] = useState<string | null>(null);
+  const redirectedRef = useRef<string | null>(null);
+  const hydratedImportRef = useRef(false);
 
   const refreshList = useCallback(async () => {
     const res = await fetch("/api/recall/bots");
@@ -70,26 +83,54 @@ export function CaptureBotClient() {
     setIntents(data.intents ?? []);
   }, []);
 
-  const syncBot = useCallback(async (botId: string) => {
-    const res = await fetch(`/api/recall/bots/${encodeURIComponent(botId)}`);
-    if (!res.ok) return;
-    const data = (await res.json()) as {
-      intent?: Intent | null;
-      status?: string | null;
-      meetingId?: string | null;
-      meeting?: MeetingPayload | null;
-    };
-    if (data.meeting) {
-      persistMeeting(data.meeting);
-    }
-    await refreshList();
-  }, [refreshList]);
+  const syncBot = useCallback(
+    async (botId: string, opts?: { redirect?: boolean }) => {
+      const res = await fetch(`/api/recall/bots/${encodeURIComponent(botId)}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setError("Bot not found or not owned by this account.");
+        }
+        return;
+      }
+      const data = (await res.json()) as {
+        intent?: Intent | null;
+        status?: string | null;
+        meetingId?: string | null;
+        meeting?: MeetingPayload | null;
+      };
+      if (data.meeting) {
+        const meetingId = persistMeeting(data.meeting);
+        if (meetingId) {
+          setReadyMeetingId(meetingId);
+          if (
+            opts?.redirect !== false &&
+            redirectedRef.current !== meetingId
+          ) {
+            redirectedRef.current = meetingId;
+            router.push(`/meetings/${meetingId}`);
+          }
+        }
+      }
+      await refreshList();
+    },
+    [refreshList, router],
+  );
 
   useEffect(() => {
     void refreshList();
     const t = setInterval(() => void refreshList(), 5000);
     return () => clearInterval(t);
   }, [refreshList]);
+
+  // Recover / resume a bot via ?bot= or ?import= (browser finalizes → localStorage).
+  useEffect(() => {
+    if (hydratedImportRef.current) return;
+    const importId =
+      searchParams.get("bot") || searchParams.get("import") || null;
+    if (!importId) return;
+    hydratedImportRef.current = true;
+    setActiveBotId(importId);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!activeBotId) return;
@@ -101,6 +142,8 @@ export function CaptureBotClient() {
   async function launch() {
     setBusy(true);
     setError(null);
+    setReadyMeetingId(null);
+    redirectedRef.current = null;
     try {
       const res = await fetch("/api/recall/bots", {
         method: "POST",
@@ -156,6 +199,28 @@ export function CaptureBotClient() {
         intelligence pipeline when the transcript is ready.
       </p>
 
+      {readyMeetingId && (
+        <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+          <div className="text-sm font-medium text-emerald-200">
+            Meeting ready
+          </div>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
+            Saved to your browser library. Opening the meeting…
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3 text-sm">
+            <Link
+              href={`/meetings/${readyMeetingId}`}
+              className="text-[var(--accent)] hover:underline"
+            >
+              View Meeting
+            </Link>
+            <Link href="/dashboard" className="text-white/70 hover:underline">
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      )}
+
       <div className="mt-6 space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
         <label className="block text-sm">
           <span className="mb-1.5 block text-[var(--text-muted)]">
@@ -193,8 +258,9 @@ export function CaptureBotClient() {
           {busy ? "Sending…" : "Send Brief Notetaker"}
         </button>
         <p className="text-xs text-[var(--text-muted)]">
-          Admit the bot in Google Meet if prompted. Leave the call running until
-          you want notes — then end the meeting or remove the bot.
+          Admit the bot in Google Meet if prompted. Keep this page open until
+          status shows Meeting ready — Brief then saves it to your library and
+          opens the meeting.
         </p>
       </div>
 
@@ -202,7 +268,7 @@ export function CaptureBotClient() {
         <h2 className="text-lg font-semibold">Recent captures</h2>
         {intents.length === 0 ? (
           <p className="mt-3 text-sm text-[var(--text-muted)]">
-            No bots launched yet from this session.
+            No bots launched yet from this account.
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
@@ -228,7 +294,7 @@ export function CaptureBotClient() {
                       className="text-[var(--accent)] hover:underline"
                       onClick={() => {
                         setActiveBotId(intent.botId);
-                        void syncBot(intent.botId!);
+                        void syncBot(intent.botId!, { redirect: true });
                       }}
                     >
                       Refresh status
@@ -241,6 +307,11 @@ export function CaptureBotClient() {
                     <Link
                       href={`/meetings/${intent.meetingId}`}
                       className="text-[var(--accent)] hover:underline"
+                      onClick={() => {
+                        if (intent.botId) {
+                          void syncBot(intent.botId, { redirect: false });
+                        }
+                      }}
                     >
                       Open meeting
                     </Link>

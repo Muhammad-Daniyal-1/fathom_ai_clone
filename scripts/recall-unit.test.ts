@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import test from "node:test";
+import { firstBotRecording } from "../src/lib/recall/recordings.ts";
 import {
   signRecallWebhook,
   verifyRequestFromRecall,
@@ -170,4 +171,36 @@ test("sign helper matches HMAC construction", () => {
     signRecallWebhook({ secret: SECRET, msgId, timestamp, payload }),
     `v1,${expected}`,
   );
+});
+
+test("firstBotRecording accepts flat and nested recording shapes", () => {
+  const flat = firstBotRecording({
+    id: "b1",
+    recordings: [
+      {
+        id: "r1",
+        media_shortcuts: { transcript: { id: "t1" } },
+      },
+    ],
+  });
+  assert.equal(flat?.id, "r1");
+  assert.equal(
+    (flat?.media_shortcuts as { transcript?: { id?: string } } | undefined)
+      ?.transcript?.id,
+    "t1",
+  );
+
+  const nested = firstBotRecording({
+    id: "b2",
+    recordings: [
+      {
+        recording: {
+          id: "r2",
+          media_shortcuts: { transcript: { id: "t2" } },
+        },
+      },
+    ],
+  });
+  assert.equal(nested?.id, "r2");
+  assert.equal(nested?.media_shortcuts?.transcript?.id, "t2");
 });

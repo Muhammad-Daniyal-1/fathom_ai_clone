@@ -63,16 +63,27 @@ export function MeetingLoader({
               const { saveGeneratedMeeting } = await import(
                 "@/lib/generated-meetings"
               );
+              const meeting = {
+                ...data.meeting.meeting,
+                source: data.meeting.meeting.source ?? ("recall" as const),
+                groupLabel: data.meeting.meeting.groupLabel || "Captured",
+              };
               saveGeneratedMeeting({
-                id: data.meeting.id || data.meeting.meeting.id,
-                title: data.meeting.title || data.meeting.meeting.title,
+                id: data.meeting.id || meeting.id,
+                title: data.meeting.title || meeting.title,
                 createdAt:
                   data.meeting.createdAt || new Date().toISOString(),
-                meeting: data.meeting.meeting,
+                meeting,
                 participants: data.meeting.participants ?? [],
                 utterances: data.meeting.utterances,
                 analysis: data.meeting.analysis,
+                source: "recall",
               });
+              if (!cancelled) {
+                setMeeting(meeting);
+                setReady(true);
+                return;
+              }
             }
             if (!cancelled) {
               setMeeting(data.meeting.meeting);

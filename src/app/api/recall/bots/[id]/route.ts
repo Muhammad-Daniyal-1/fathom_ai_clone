@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { RecallClient } from "@/lib/recall/client";
+import { ensureCapturedMeetingFromBot } from "@/lib/recall/process";
+import { firstBotRecording } from "@/lib/recall/recordings";
 import {
-  ensureCapturedMeetingFromBot,
-} from "@/lib/recall/process";
-import {
+  claimBotIntentForEmail,
   findIntentByBotId,
   findIntentById,
   getCapturedMeeting,
 } from "@/lib/recall/store";
+import { titleFromMeetingUrl } from "@/lib/recall/transcript";
 
 export const runtime = "nodejs";
+
+function asMeetingUrl(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
 
 export async function GET(
   _request: Request,
@@ -45,6 +50,32 @@ export async function GET(
       remote = null;
     }
 
+    // Claim orphan / script-created bots for the signed-in user so list
+    // endpoints stay email-scoped and dashboard can attribute ownership.
+    if (session.user.email && (!intent || !intent.createdByEmail)) {
+      const meetingUrl =
+        intent?.meetingUrl || asMeetingUrl(remote?.meeting_url);
+      const rec = remote ? firstBotRecording(remote) : null;
+      const claim = await claimBotIntentForEmail({
+        botId,
+        email: session.user.email,
+        meetingUrl,
+        title:
+          intent?.title ||
+          (meetingUrl ? titleFromMeetingUrl(meetingUrl) : "Captured meeting"),
+        botName: remote?.bot_name || intent?.botName || "Brief Notetaker",
+        recordingId: rec?.id ?? intent?.recordingId ?? null,
+        transcriptId:
+          rec?.media_shortcuts?.transcript?.id ?? intent?.transcriptId ?? null,
+        meetingId: intent?.meetingId ?? null,
+        status: intent?.status ?? "processing",
+      });
+      if (!claim.claimed && claim.intent.createdByEmail !== session.user.email) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      intent = claim.intent;
+    }
+
     try {
       sync = await ensureCapturedMeetingFromBot(botId);
       // Refresh intent after sync side effects
@@ -63,6 +94,14 @@ export async function GET(
 
   const meetingId = sync?.meetingId || intent?.meetingId || null;
   const captured = meetingId ? await getCapturedMeeting(meetingId) : null;
+
+  if (
+    captured?.createdByEmail &&
+    session.user.email &&
+    captured.createdByEmail !== session.user.email
+  ) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({
     intent,

@@ -51,7 +51,12 @@ export type RecallBot = {
   bot_name?: string;
   join_at?: string | null;
   status_changes?: Array<{ code?: string; created_at?: string }>;
-  recordings?: Array<{ id: string; media_shortcuts?: unknown }>;
+  recordings?: Array<{
+    id?: string;
+    media_shortcuts?: unknown;
+    /** Some payloads nest the recording object. */
+    recording?: { id?: string; media_shortcuts?: unknown };
+  }>;
   metadata?: Record<string, unknown>;
 };
 

@@ -43,6 +43,8 @@ export type CapturedMeeting = {
   title: string;
   meetingUrl: string;
   createdAt: string;
+  /** Session user who launched / claimed the bot. */
+  createdByEmail: string | null;
   meeting: Meeting;
   participants: Participant[];
   utterances: ParsedUtterance[];
@@ -269,15 +271,96 @@ export async function listCapturedMeetingsForEmail(
   email: string | null | undefined,
 ): Promise<CapturedMeeting[]> {
   const store = await readStore();
-  if (!email) return store.captured;
+  if (!email) return [];
   const myBotIds = new Set(
     store.intents
       .filter((i) => i.createdByEmail === email && i.botId)
       .map((i) => i.botId as string),
   );
   return store.captured.filter(
-    (m) => myBotIds.has(m.botId) || m.botId === "unknown",
+    (m) => m.createdByEmail === email || myBotIds.has(m.botId),
   );
+}
+
+/**
+ * Attach a Recall bot to the authenticated user so list endpoints stay scoped.
+ * Does not steal bots already owned by a different email.
+ */
+export async function claimBotIntentForEmail(input: {
+  botId: string;
+  email: string;
+  meetingUrl?: string;
+  title?: string;
+  botName?: string;
+  recordingId?: string | null;
+  transcriptId?: string | null;
+  meetingId?: string | null;
+  status?: BotLaunchStatus;
+}): Promise<{ intent: BotIntent; claimed: boolean }> {
+  let intent: BotIntent | null = null;
+  let claimed = false;
+  const now = new Date().toISOString();
+
+  await updateStore((store) => {
+    const existing = store.intents.find((i) => i.botId === input.botId);
+    if (existing) {
+      if (
+        existing.createdByEmail &&
+        existing.createdByEmail !== input.email
+      ) {
+        intent = { ...existing };
+        claimed = false;
+        return;
+      }
+      existing.createdByEmail = input.email;
+      if (input.meetingUrl) existing.meetingUrl = input.meetingUrl;
+      if (input.title) existing.title = input.title;
+      if (input.recordingId) existing.recordingId = input.recordingId;
+      if (input.transcriptId) existing.transcriptId = input.transcriptId;
+      if (input.meetingId) existing.meetingId = input.meetingId;
+      if (input.status) existing.status = input.status;
+      existing.updatedAt = now;
+      intent = { ...existing };
+      claimed = true;
+      return;
+    }
+
+    const created: BotIntent = {
+      id: newIntentId(),
+      meetingUrl: input.meetingUrl || "",
+      title: input.title || "Captured meeting",
+      botId: input.botId,
+      botName: input.botName || "Brief Notetaker",
+      status: input.status ?? "processing",
+      lastEvent: null,
+      lastCode: null,
+      recordingId: input.recordingId ?? null,
+      transcriptId: input.transcriptId ?? null,
+      meetingId: input.meetingId ?? null,
+      error: null,
+      source: "meeting_url",
+      calendarEventId: null,
+      createdAt: now,
+      updatedAt: now,
+      createdByEmail: input.email,
+    };
+    store.intents.unshift(created);
+    intent = created;
+    claimed = true;
+  });
+
+  return { intent: intent!, claimed };
+}
+
+export function userOwnsCapturedMeeting(
+  meeting: CapturedMeeting,
+  email: string | null | undefined,
+  intents: BotIntent[],
+): boolean {
+  if (!email) return false;
+  if (meeting.createdByEmail === email) return true;
+  const intent = intents.find((i) => i.botId === meeting.botId);
+  return Boolean(intent?.createdByEmail === email);
 }
 
 export async function claimWebhookEvent(

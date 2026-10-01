@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import {
+  findIntentByBotId,
   getCapturedMeeting,
   listCapturedMeetingsForEmail,
+  listIntentsForEmail,
+  userOwnsCapturedMeeting,
 } from "@/lib/recall/store";
 
 export const runtime = "nodejs";
@@ -13,10 +16,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const email = session.user.email ?? null;
   const id = new URL(request.url).searchParams.get("id");
   if (id) {
     const meeting = await getCapturedMeeting(id);
     if (!meeting) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    const intents = await listIntentsForEmail(email);
+    const intent = await findIntentByBotId(meeting.botId);
+    const owned =
+      userOwnsCapturedMeeting(meeting, email, intents) ||
+      (!meeting.createdByEmail &&
+        (!intent?.createdByEmail || intent.createdByEmail === email));
+    if (!owned) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     return NextResponse.json({
@@ -33,7 +46,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const meetings = await listCapturedMeetingsForEmail(session.user.email);
+  const meetings = await listCapturedMeetingsForEmail(email);
   return NextResponse.json({
     meetings: meetings.map((m) => ({
       id: m.id,

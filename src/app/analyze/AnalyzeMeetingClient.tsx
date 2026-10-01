@@ -166,6 +166,7 @@ export default function AnalyzeMeetingClient({
         utterances: data.utterances,
         analysis: data.analysis,
       });
+      meeting.source = "transcript";
       registerParticipants(participants);
       saveGeneratedMeeting({
         id: meeting.id,
@@ -175,6 +176,7 @@ export default function AnalyzeMeetingClient({
         participants,
         utterances: data.utterances,
         analysis: data.analysis,
+        source: "transcript",
       });
       router.push(`/meetings/${meeting.id}`);
     } catch (err) {

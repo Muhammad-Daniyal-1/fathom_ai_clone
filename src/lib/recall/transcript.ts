@@ -37,7 +37,8 @@ export function recallTranscriptToUtterances(raw: unknown): ParsedUtterance[] {
     if (words.length === 0) continue;
     const text = words
       .map((w) => (typeof w.text === "string" ? w.text : ""))
-      .join("")
+      .filter(Boolean)
+      .join(" ")
       .replace(/\s+/g, " ")
       .trim();
     if (!text) continue;

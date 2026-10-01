@@ -75,6 +75,8 @@ export interface AskSuggestion {
   evidenceUtteranceIds?: string[];
 }
 
+export type MeetingSource = "recall" | "transcript" | "demo";
+
 export interface Meeting {
   id: string;
   title: string;
@@ -86,6 +88,8 @@ export interface Meeting {
   audioSrc: string;
   waveformHue: number;
   participantIds: string[];
+  /** How the meeting entered Brief. Optional for seeded demos. */
+  source?: MeetingSource;
   transcript: TranscriptUtterance[];
   summary: {
     templateName: string;

@@ -13,6 +13,14 @@
 - Meeting-URL launch (`/capture`) is the explicit ad-hoc / test surface — not the default recurring UX.
 - **Opt-in rule:** a bot is scheduled only when the user turns **Record with Brief** on for that calendar event. Connecting a calendar authorizes sync only.
 
+## Persistence (portfolio / deadline-safe)
+
+- **Recall** is the source of truth for recordings + transcripts.
+- Server `data/recall/store.json` (local) or `/tmp/brief-recall` (Vercel) caches intents + captured meetings. **Vercel `/tmp` is ephemeral** — not a database.
+- When `/capture` (or meeting detail) receives a finalized meeting, the browser saves it into `brief.generatedMeetings.v1` localStorage — the same collection as transcript analysis — so `/dashboard` and `MeetingLoader` see it.
+- Captured meetings are scoped by the Google session email that launched/claimed the bot.
+- Recover an existing Recall bot into the signed-in browser library: `/capture?bot=<recall-bot-uuid>`
+
 ## Webhook lifecycle (v1.11)
 
 1. `bot.*` → update local intent status

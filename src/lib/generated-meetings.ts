@@ -1,4 +1,4 @@
-import type { Meeting, Participant } from "@/data/types";
+import type { Meeting, MeetingSource, Participant } from "@/data/types";
 import type { CanonicalAnalysis, ParsedUtterance } from "@/lib/ai/schemas";
 
 const STORAGE_KEY = "brief.generatedMeetings.v1";
@@ -11,6 +11,8 @@ export interface StoredGeneratedMeeting {
   participants: Participant[];
   utterances: ParsedUtterance[];
   analysis: CanonicalAnalysis;
+  /** Mirrors meeting.source when known. */
+  source?: MeetingSource;
 }
 
 function canUseStorage(): boolean {
@@ -32,8 +34,16 @@ export function loadGeneratedMeetings(): StoredGeneratedMeeting[] {
 export function saveGeneratedMeeting(
   entry: StoredGeneratedMeeting,
 ): StoredGeneratedMeeting[] {
-  const existing = loadGeneratedMeetings().filter((m) => m.id !== entry.id);
-  const next = [entry, ...existing];
+  const withSource: StoredGeneratedMeeting = {
+    ...entry,
+    source: entry.source ?? entry.meeting.source,
+    meeting: {
+      ...entry.meeting,
+      source: entry.meeting.source ?? entry.source,
+    },
+  };
+  const existing = loadGeneratedMeetings().filter((m) => m.id !== withSource.id);
+  const next = [withSource, ...existing];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
 }
