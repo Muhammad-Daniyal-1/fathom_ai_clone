@@ -194,9 +194,8 @@ export function CaptureBotClient() {
         Capture a Meeting
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-[var(--text-muted)]">
-        Send Brief Notetaker to an active Google Meet. The bot joins through
-        Recall.ai, records the call, then Brief runs the existing meeting
-        intelligence pipeline when the transcript is ready.
+        Send Brief Notetaker to your meeting and turn the conversation into
+        structured meeting intelligence.
       </p>
 
       {readyMeetingId && (
@@ -224,7 +223,7 @@ export function CaptureBotClient() {
       <div className="mt-6 space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)] p-5">
         <label className="block text-sm">
           <span className="mb-1.5 block text-[var(--text-muted)]">
-            Google Meet URL
+            Meeting URL
           </span>
           <input
             value={meetingUrl}
@@ -258,9 +257,9 @@ export function CaptureBotClient() {
           {busy ? "Sending…" : "Send Brief Notetaker"}
         </button>
         <p className="text-xs text-[var(--text-muted)]">
-          Admit the bot in Google Meet if prompted. Keep this page open until
-          status shows Meeting ready — Brief then saves it to your library and
-          opens the meeting.
+          You may need to admit Brief Notetaker when it joins the meeting. Keep
+          this page open until status shows Meeting ready — Brief then saves it
+          to your library and opens the meeting.
         </p>
       </div>
 

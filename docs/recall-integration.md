@@ -9,9 +9,9 @@
 
 ## Scheduling decision
 
-- Primary UX: calendar opt-in scheduling via Recall Calendar V2 (Google).
-- Meeting-URL launch (`/capture`) is the explicit ad-hoc / test surface — not the default recurring UX.
-- **Opt-in rule:** a bot is scheduled only when the user turns **Record with Brief** on for that calendar event. Connecting a calendar authorizes sync only.
+- **Verified primary UX:** meeting-URL launch (`/capture`) — paste a Meet/Zoom/Teams/Webex URL and send Brief Notetaker.
+- Calendar V2 code paths exist but are **not** presented as a completed product surface in this portfolio build.
+- **Opt-in rule (calendar path):** a bot is scheduled only when the user turns **Record with Brief** on for that calendar event. Connecting a calendar authorizes sync only.
 
 ## Persistence (portfolio / deadline-safe)
 

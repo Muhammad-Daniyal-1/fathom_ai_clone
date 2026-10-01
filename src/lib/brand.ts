@@ -27,4 +27,5 @@ export const outcomeMeta: Record<
 };
 
 export const productName = "Brief";
-export const productTagline = "Meeting intelligence that keeps agreements honest.";
+export const productTagline =
+  "AI meeting intelligence that turns conversations into decisions, action items, and searchable knowledge.";

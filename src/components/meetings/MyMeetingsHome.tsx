@@ -263,7 +263,7 @@ export function MyMeetingsHome({ user }: { user: DashboardUser }) {
             Your Meetings
           </h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Capture a live Google Meet with Brief Notetaker, or analyze a
+            Capture a live meeting with Brief Notetaker, or analyze a
             transcript.
           </p>
         </div>

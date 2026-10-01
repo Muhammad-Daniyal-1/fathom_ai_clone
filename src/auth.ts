@@ -9,7 +9,7 @@ import Google from "next-auth/providers/google";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
-      // Default scopes: openid email profile — sufficient for CP3.
+      // Default scopes: openid email profile.
       authorization: {
         params: {
           scope: "openid email profile",

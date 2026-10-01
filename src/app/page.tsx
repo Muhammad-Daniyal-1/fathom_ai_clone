@@ -5,6 +5,10 @@ import { ProductPreview } from "@/components/landing/ProductPreview";
 
 const FEATURES = [
   {
+    title: "Meeting Bot",
+    body: "Send Brief Notetaker to a supported meeting through Recall.ai and capture the conversation as a transcript.",
+  },
+  {
     title: "AI Meeting Summaries",
     body: "Turn long conversations into concise, structured summaries with purpose, takeaways, and topics.",
   },
@@ -21,30 +25,26 @@ const FEATURES = [
     body: "Every insight cites transcript evidence so you can verify what was actually said.",
   },
   {
-    title: "Ask Your Meeting",
+    title: "Ask Brief",
     body: "Ask contextual questions and get grounded answers with clickable evidence.",
-  },
-  {
-    title: "Meeting History",
-    body: "Browse seeded demos and your analyzed meetings in one library.",
   },
 ] as const;
 
 const STEPS = [
   {
     step: "1",
-    title: "Add your meeting transcript",
-    body: "Paste a conversation or load the Q4 example to start.",
+    title: "Capture or import",
+    body: "Send Brief Notetaker to your meeting, paste a transcript, or upload a .txt file.",
   },
   {
     step: "2",
     title: "Brief analyzes the conversation",
-    body: "AI extracts summaries, decisions, action items, and risks with evidence IDs.",
+    body: "Groq-powered meeting intelligence extracts summaries, decisions, action items, and risks.",
   },
   {
     step: "3",
-    title: "Review insights and ask questions",
-    body: "Open the meeting detail view, jump to evidence, and ask follow-ups.",
+    title: "Act on the outcome",
+    body: "Review decisions, action items, risks and evidence, then ask questions about the meeting.",
   },
 ] as const;
 
@@ -92,14 +92,15 @@ export default function LandingPage() {
         <section className="mx-auto max-w-6xl px-4 pb-12 pt-14 md:px-6 md:pb-16 md:pt-20">
           <div className="mx-auto max-w-3xl text-center">
             <p className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
-              AI-powered meeting intelligence
+              AI Meeting Intelligence
             </p>
             <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl md:leading-[1.1]">
               Turn every meeting into actionable intelligence.
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-[var(--text-muted)] sm:text-lg">
-              Transform meeting conversations into clear summaries, decisions,
-              action items, risks, and searchable knowledge.
+              Send Brief Notetaker to a meeting or import a transcript. Brief
+              turns conversations into summaries, decisions, action items,
+              risks, and searchable knowledge.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link
@@ -116,8 +117,8 @@ export default function LandingPage() {
               </Link>
             </div>
             <p className="mt-4 text-xs text-[var(--text-muted)]">
-              View Demo opens Analyze Meeting — load the Q4 example transcript
-              there.
+              View Demo opens Analyze Meeting — try the Q4 example transcript
+              without signing in.
             </p>
           </div>
 
@@ -164,8 +165,8 @@ export default function LandingPage() {
                 How it works
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
-                Meeting ingestion is separate from intelligence. Brief analyzes
-                transcripts you provide.
+                Capture live meetings or import transcripts — then Brief turns
+                the conversation into structured intelligence.
               </p>
             </div>
             <ol className="grid gap-4 md:grid-cols-3">
@@ -195,15 +196,15 @@ export default function LandingPage() {
               Turn conversations into decisions.
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
-              Stop losing agreements inside meetings. Import a transcript and
-              Brief turns it into structured, evidence-linked knowledge you can
-              search and ask about.
+              Stop losing agreements inside meetings. Capture with Brief
+              Notetaker or import a transcript — then review evidence-linked
+              knowledge you can search and ask about.
             </p>
             <Link
-              href={DEMO_HREF}
+              href={AUTH_ENTRY_HREF}
               className="mt-8 inline-flex rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-medium text-white hover:brightness-110"
             >
-              Analyze a Meeting
+              Get Started
             </Link>
           </div>
         </section>
