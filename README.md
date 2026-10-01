@@ -68,6 +68,32 @@ Effort went into post-meeting intelligence and reliability.
 
 Seeded meetings remain as a deterministic fallback if Groq is unavailable.
 
+## Recall.ai Meeting Bot
+
+Production capture uses **Recall.ai Meeting Bots** in `us-east-1` (workspace **HM Daniyal**).
+
+### Product choices
+
+- **Meeting URL launch** at `/capture` — user pastes Zoom / Meet / Teams / Webex URL; backend creates the bot after persisting a local intent.
+- **Calendar V2 (Google)** at `/calendar` — syncs events; **recording is opt-in per event** (connecting a calendar does not auto-record).
+- **Post-meeting** Recall.ai Transcription (`recallai_async` after `recording.done` → `transcript.done`).
+- Webhooks at `/api/webhooks/recall` (verified with `RECALL_WEBHOOK_VERIFICATION_SECRET`).
+
+### Required env
+
+See `.env.example`. `PUBLIC_API_BASE_URL` must be a stable HTTPS origin (Vercel production URL or reserved ngrok) — never localhost.
+
+### Local checks
+
+```bash
+npm run test:recall
+npm run smoke:recall
+```
+
+### Interactive meeting test
+
+After deploy + webhook registration, open `/capture`, paste a real meeting URL, and confirm before the bot joins.
+
 ## Local setup
 
 ```bash

@@ -9,11 +9,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:recall": "node --experimental-strip-types --test scripts/recall-unit.test.ts",
+    "smoke:recall": "node --experimental-strip-types scripts/recall-smoke.mjs"
   },
   "dependencies": {
     "groq-sdk": "^1.6.0",
     "next": "16.3.8",
+    "next-auth": "^5.0.0-beta.32",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },

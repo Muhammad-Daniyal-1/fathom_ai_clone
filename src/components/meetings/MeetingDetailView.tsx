@@ -34,7 +34,7 @@ function buildCopyText(meeting: Meeting): string {
   return lines.join("\n");
 }
 
-function MeetingDetailInner() {
+function MeetingDetailInner({ backHref }: { backHref: string }) {
   const { meeting, tab, setTab, jumpToEvidence } = usePlayback();
   const search = useSearchParams();
   const [shareNote, setShareNote] = useState<string | null>(null);
@@ -67,10 +67,12 @@ function MeetingDetailInner() {
       <header className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-4">
         <div>
           <Link
-            href="/"
+            href={backHref}
             className="mb-2 inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-white"
           >
-            ← Back to My Meetings
+            {backHref === "/dashboard"
+              ? "← Back to My Meetings"
+              : "← Back to home"}
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight">
             {meeting.title}
@@ -164,10 +166,16 @@ function MeetingDetailInner() {
   );
 }
 
-export function MeetingDetailView({ meeting }: { meeting: Meeting }) {
+export function MeetingDetailView({
+  meeting,
+  backHref = "/dashboard",
+}: {
+  meeting: Meeting;
+  backHref?: string;
+}) {
   return (
     <PlaybackProvider meeting={meeting}>
-      <MeetingDetailInner />
+      <MeetingDetailInner backHref={backHref} />
     </PlaybackProvider>
   );
 }

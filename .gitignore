@@ -31,6 +31,9 @@
 .env.*
 !.env.example
 
+# Recall local durable store (bot intents, captured meetings, calendar prefs)
+/data/recall/
+
 # typescript
 next-env.d.ts
 *.tsbuildinfo
