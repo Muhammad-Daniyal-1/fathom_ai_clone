@@ -1,40 +1,27 @@
-# Deploy & public repo checklist
+# Deploy
 
-Local production verify (already done in agent session):
+## Live
+
+- App: https://muhammad-daniyal-1.github.io/fathom_ai_clone/
+- Repo: https://github.com/Muhammad-Daniyal-1/fathom_ai_clone (public)
+
+## Redeploy GitHub Pages
 
 ```bash
-npm run build
-npm run start -- -H 127.0.0.1 -p 3000
-# http://127.0.0.1:3000
-# http://127.0.0.1:3000/meetings/atlas-weekly
-# http://127.0.0.1:3000/share/atlas-weekly
+GITHUB_PAGES=true npm run build
+touch out/.nojekyll
+npx gh-pages -d out --dotfiles
+gh api -X POST repos/Muhammad-Daniyal-1/fathom_ai_clone/pages/builds
 ```
 
-## 1. Public GitHub repository
+Optional Vercel (requires `npx vercel login`):
 
 ```bash
-gh auth login
-gh repo create fathom_ai_clone --public --source=. --remote=origin --push
-# or if remote exists:
-git push -u origin main
-gh repo edit --visibility public
-```
-
-Confirm `.agent-logs/` and `CAPTURE-TEST.md` are on `main`.
-
-## 2. Vercel production deploy
-
-```bash
-npx vercel login
 npx vercel --prod
 ```
 
-Then verify in **incognito**:
+To enable Actions deploy, refresh token scope then copy `docs/deploy-pages.workflow.yml` → `.github/workflows/`:
 
-- `/`
-- `/meetings/atlas-weekly`
-- `/share/atlas-weekly`
-
-## 3. Walkthrough script
-
-See root `README.md`.
+```bash
+gh auth refresh -s workflow
+```
