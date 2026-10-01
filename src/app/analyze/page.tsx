@@ -113,8 +113,9 @@ export default function AnalyzeMeetingPage() {
               Analyze Meeting
             </h1>
             <p className="text-sm text-[var(--text-muted)]">
-              Paste an unseen transcript — {productName} extracts decisions,
-              commitments, risks, and evidence-linked outcomes with Groq.
+              Paste a transcript and {productName} turns it into
+              evidence-grounded decisions, commitments, risks and open
+              questions.
             </p>
           </div>
         </div>
@@ -148,6 +149,13 @@ export default function AnalyzeMeetingPage() {
               Load example
             </button>
           </div>
+          <p className="mb-2 text-[11px] text-[var(--text-muted)]">
+            Expected format —{" "}
+            <span className="font-mono text-white/60">
+              Speaker [00:00]:
+            </span>{" "}
+            then what was said on the next line.
+          </p>
           <textarea
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
@@ -165,7 +173,7 @@ export default function AnalyzeMeetingPage() {
               <div>
                 <div className="text-sm font-medium">{STAGES[stageIndex]}</div>
                 <div className="text-xs text-[var(--text-muted)]">
-                  One live Groq analysis — results are not precomputed.
+                  Live analysis in progress — this result is not precomputed.
                 </div>
               </div>
             </div>

@@ -48,14 +48,21 @@ export interface MeetingOutcome {
   status?: OutcomeStatus;
   previousValue?: string;
   newValue?: string;
+  /** Primary evidence (seeded + generated). */
   evidenceUtteranceId: string;
+  /** All validated evidence IDs (generated meetings; optional for seeded). */
+  evidenceUtteranceIds?: string[];
+  /** Model-reported evidence strength 0–1 (generated only; not objective truth). */
+  confidence?: number;
 }
 
 export interface ActionItem {
   id: string;
   text: string;
-  ownerId: string;
-  dueLabel: string;
+  /** Undefined when Groq did not establish an owner — never invent one. */
+  ownerId?: string;
+  /** Undefined when no deadline was stated. */
+  dueLabel?: string;
   status: OutcomeStatus;
   outcomeId: string;
   evidenceUtteranceId: string;

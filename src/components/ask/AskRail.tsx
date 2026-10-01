@@ -55,8 +55,10 @@ export function AskRail() {
           : null,
         due: o.dueLabel ?? null,
         status: o.status ?? null,
-        confidence: 0.9,
-        evidenceIds: [o.evidenceUtteranceId],
+        confidence: o.confidence ?? 0.9,
+        evidenceIds: o.evidenceUtteranceIds?.length
+          ? o.evidenceUtteranceIds
+          : [o.evidenceUtteranceId],
         previousValue: o.previousValue ?? null,
         newValue: o.newValue ?? null,
       })),
@@ -135,7 +137,7 @@ export function AskRail() {
       </div>
       <div className="scrollbar-thin mb-3 min-h-[120px] flex-1 overflow-y-auto rounded-xl bg-black/20 p-3 text-sm leading-relaxed">
         {isPending ? (
-          <p className="text-[var(--text-muted)]">Thinking with Groq…</p>
+          <p className="text-[var(--text-muted)]">Reading this call…</p>
         ) : active ? (
           <div>
             <div className="text-xs text-[var(--text-muted)]">You</div>
@@ -146,12 +148,13 @@ export function AskRail() {
               active.evidenceUtteranceIds.length > 0 && (
                 <div className="mt-3">
                   <div className="mb-1.5 text-[11px] text-[var(--text-muted)]">
-                    Evidence
+                    Sources
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {active.evidenceUtteranceIds.map((id) => {
                       const u = meeting.transcript.find((x) => x.id === id);
                       if (!u) return null;
+                      const speaker = getParticipant(u.speakerId);
                       return (
                         <button
                           key={id}
@@ -159,7 +162,8 @@ export function AskRail() {
                           onClick={() => jumpToEvidence(id)}
                           className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] text-[var(--accent)] hover:bg-[var(--accent-soft)]"
                         >
-                          ▶ {formatTimestamp(u.startTime)}
+                          ▶ {speaker?.name ?? "Speaker"} ·{" "}
+                          {formatTimestamp(u.startTime)}
                         </button>
                       );
                     })}

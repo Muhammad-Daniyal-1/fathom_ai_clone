@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getParticipant } from "@/data/meetings";
 import type { Meeting } from "@/data/types";
@@ -13,14 +13,36 @@ import { ActionItemsPanel } from "@/components/actions/ActionItemsPanel";
 import { AskRail } from "@/components/ask/AskRail";
 import { productName } from "@/lib/brand";
 
-function MeetingDetailInner({ shareHref }: { shareHref: string }) {
+function buildCopyText(meeting: Meeting): string {
+  const lines = [
+    meeting.title,
+    "",
+    "Purpose",
+    meeting.summary.purpose,
+    "",
+    "Key Takeaways",
+    ...(meeting.summary.takeaways?.map(
+      (t) => `• ${t.label ? `${t.label}: ` : ""}${t.text}`,
+    ) ?? []),
+    "",
+    "Outcomes",
+    ...meeting.outcomes.map(
+      (o) =>
+        `• [${o.type}] ${o.title}${o.dueLabel ? ` · ${o.dueLabel}` : ""}`,
+    ),
+  ];
+  return lines.join("\n");
+}
+
+function MeetingDetailInner() {
   const { meeting, tab, setTab, jumpToEvidence } = usePlayback();
   const search = useSearchParams();
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const isGenerated = !meeting.audioSrc;
 
   useEffect(() => {
     const u = search.get("u");
     if (u) jumpToEvidence(u);
-    // only on mount / meeting change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meeting.id]);
 
@@ -29,6 +51,16 @@ function MeetingDetailInner({ shareHref }: { shareHref: string }) {
     { id: "actions" as const, label: "Action Items" },
     { id: "transcript" as const, label: "Transcript" },
   ];
+
+  async function copySummaryShare() {
+    try {
+      await navigator.clipboard.writeText(buildCopyText(meeting));
+      setShareNote("Summary copied");
+      window.setTimeout(() => setShareNote(null), 1800);
+    } catch {
+      setShareNote("Could not copy");
+    }
+  }
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[1400px] flex-col px-4 py-4 md:px-6">
@@ -40,9 +72,16 @@ function MeetingDetailInner({ shareHref }: { shareHref: string }) {
           >
             ← Back to My Meetings
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{meeting.title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {meeting.title}
+          </h1>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[var(--text-muted)]">
             <span>{meeting.dateLabel}</span>
+            {isGenerated && (
+              <span className="rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--accent)]">
+                AI analyzed
+              </span>
+            )}
             <div className="flex -space-x-1.5">
               {meeting.participantIds.map((id) => {
                 const p = getParticipant(id);
@@ -52,28 +91,37 @@ function MeetingDetailInner({ shareHref }: { shareHref: string }) {
                     title={p?.name}
                     className="flex h-7 w-7 items-center justify-center rounded-full border border-[var(--bg)] bg-[#2a3140] text-[10px] font-semibold text-white"
                   >
-                    {p?.initials}
+                    {p?.initials ?? "?"}
                   </span>
                 );
               })}
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href={shareHref}
-            target="_blank"
-            className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:brightness-110"
-          >
-            Share
-          </Link>
-          <button
-            type="button"
-            className="rounded-full border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-muted)]"
-            aria-label="More"
-          >
-            ⋯
-          </button>
+        <div className="flex flex-col items-end gap-1">
+          {isGenerated ? (
+            <button
+              type="button"
+              onClick={() => void copySummaryShare()}
+              className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:brightness-110"
+              title="Generated meetings are stored in this browser — copy a text summary instead of a public URL"
+            >
+              Copy summary
+            </button>
+          ) : (
+            <Link
+              href={`/share/${meeting.id}`}
+              target="_blank"
+              className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:brightness-110"
+            >
+              Share
+            </Link>
+          )}
+          {shareNote && (
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {shareNote}
+            </span>
+          )}
         </div>
       </header>
 
@@ -107,8 +155,8 @@ function MeetingDetailInner({ shareHref }: { shareHref: string }) {
           <AskRail />
           <p className="text-[10px] text-[var(--text-muted)]">
             {meeting.audioSrc
-              ? `${productName} · Reliable Meeting Outcomes · evidence-linked`
-              : `${productName} · AI-analyzed transcript · evidence-linked outcomes`}
+              ? `${productName} · From conversations to outcomes you can trace`
+              : `${productName} · AI-analyzed · evidence-grounded outcomes`}
           </p>
         </aside>
       </div>
@@ -119,7 +167,7 @@ function MeetingDetailInner({ shareHref }: { shareHref: string }) {
 export function MeetingDetailView({ meeting }: { meeting: Meeting }) {
   return (
     <PlaybackProvider meeting={meeting}>
-      <MeetingDetailInner shareHref={`/share/${meeting.id}`} />
+      <MeetingDetailInner />
     </PlaybackProvider>
   );
 }

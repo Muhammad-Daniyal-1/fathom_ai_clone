@@ -1,19 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { getParticipant } from "@/data/meetings";
+import { useEffect, useState } from "react";
+import { getParticipant, formatTimestamp } from "@/data/meetings";
 import { usePlayback } from "@/lib/playback-context";
-import { formatTimestamp } from "@/data/meetings";
 
 export function ActionItemsPanel() {
   const { meeting, jumpToEvidence } = usePlayback();
   const [items, setItems] = useState(meeting.actionItems);
 
+  useEffect(() => {
+    setItems(meeting.actionItems);
+  }, [meeting.id, meeting.actionItems]);
+
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-start gap-2 py-10">
         <h2 className="text-base font-semibold">Action Items</h2>
-        <p className="text-sm text-[var(--text-muted)]">No action items detected.</p>
+        <p className="text-sm text-[var(--text-muted)]">
+          No action items detected.
+        </p>
       </div>
     );
   }
@@ -22,11 +27,14 @@ export function ActionItemsPanel() {
     <div>
       <h2 className="mb-4 text-base font-semibold">Action Items</h2>
       <p className="mb-4 text-sm text-[var(--text-muted)]">
-        Derived from the same source as Meeting Outcomes — so commitments stay consistent.
+        Derived from the same source as Meeting Outcomes — so commitments stay
+        consistent.
       </p>
       <ul className="space-y-2">
         {items.map((item) => {
-          const owner = getParticipant(item.ownerId);
+          const owner = item.ownerId
+            ? getParticipant(item.ownerId)
+            : undefined;
           return (
             <li
               key={item.id}
@@ -39,7 +47,10 @@ export function ActionItemsPanel() {
                   setItems((prev) =>
                     prev.map((x) =>
                       x.id === item.id
-                        ? { ...x, status: x.status === "done" ? "open" : "done" }
+                        ? {
+                            ...x,
+                            status: x.status === "done" ? "open" : "done",
+                          }
                         : x,
                     ),
                   )
@@ -50,13 +61,17 @@ export function ActionItemsPanel() {
               <div className="min-w-0 flex-1">
                 <div
                   className={`text-sm font-medium ${
-                    item.status === "done" ? "text-[var(--text-muted)] line-through" : ""
+                    item.status === "done"
+                      ? "text-[var(--text-muted)] line-through"
+                      : ""
                   }`}
                 >
                   {item.text}
                 </div>
                 <div className="mt-1 text-xs text-[var(--text-muted)]">
-                  {owner?.name} · {item.dueLabel}
+                  {owner?.name ?? "Unassigned"}
+                  {" · "}
+                  {item.dueLabel ?? "No due date"}
                 </div>
               </div>
               <button
@@ -64,9 +79,11 @@ export function ActionItemsPanel() {
                 onClick={() => jumpToEvidence(item.evidenceUtteranceId)}
                 className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[11px] text-[var(--accent)] hover:bg-[var(--accent-soft)]"
               >
-                ▶ {formatTimestamp(
-                  meeting.transcript.find((u) => u.id === item.evidenceUtteranceId)
-                    ?.startTime ?? 0,
+                ▶{" "}
+                {formatTimestamp(
+                  meeting.transcript.find(
+                    (u) => u.id === item.evidenceUtteranceId,
+                  )?.startTime ?? 0,
                 )}
               </button>
             </li>

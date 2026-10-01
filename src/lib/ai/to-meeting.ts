@@ -65,7 +65,7 @@ function resolveOwnerId(
   participants: Participant[],
 ): string | undefined {
   if (!owner) return undefined;
-  const lower = owner.toLowerCase();
+  const lower = owner.toLowerCase().trim();
   const hit = participants.find(
     (p) =>
       p.name.toLowerCase() === lower ||
@@ -74,10 +74,6 @@ function resolveOwnerId(
       p.id === slugify(owner),
   );
   return hit?.id;
-}
-
-function firstEvidence(ids: string[]): string {
-  return ids[0];
 }
 
 export function analysisToMeeting(input: {
@@ -95,26 +91,32 @@ export function analysisToMeeting(input: {
     ? Math.ceil(transcript[transcript.length - 1].endTime)
     : 0;
 
-  const outcomes: MeetingOutcome[] = input.analysis.outcomes.map((o, i) => ({
-    id: `${id}-o${i + 1}`,
-    type: o.type,
-    title: o.title,
-    description: o.description,
-    ownerId: resolveOwnerId(o.owner, participants),
-    dueLabel: o.due ?? undefined,
-    status: o.status ?? (o.type === "commitment" ? "open" : undefined),
-    previousValue: o.previousValue ?? undefined,
-    newValue: o.newValue ?? undefined,
-    evidenceUtteranceId: firstEvidence(o.evidenceIds),
-  }));
+  const outcomes: MeetingOutcome[] = input.analysis.outcomes.map((o, i) => {
+    const evidenceUtteranceIds = o.evidenceIds.slice();
+    return {
+      id: `${id}-o${i + 1}`,
+      type: o.type,
+      title: o.title,
+      description: o.description,
+      ownerId: resolveOwnerId(o.owner, participants),
+      dueLabel: o.due ?? undefined,
+      status: o.status ?? (o.type === "commitment" ? "open" : undefined),
+      previousValue: o.previousValue ?? undefined,
+      newValue: o.newValue ?? undefined,
+      evidenceUtteranceId: evidenceUtteranceIds[0],
+      evidenceUtteranceIds,
+      confidence: o.confidence,
+    };
+  });
 
   const actionItems: ActionItem[] = outcomes
     .filter((o) => o.type === "commitment")
     .map((o, i) => ({
       id: `${id}-a${i + 1}`,
       text: o.title,
-      ownerId: o.ownerId ?? participants[0]?.id ?? "unknown",
-      dueLabel: o.dueLabel ?? "TBD",
+      // Never invent an owner
+      ownerId: o.ownerId,
+      dueLabel: o.dueLabel,
       status: o.status ?? "open",
       outcomeId: o.id,
       evidenceUtteranceId: o.evidenceUtteranceId,
@@ -127,18 +129,15 @@ export function analysisToMeeting(input: {
   for (const step of input.analysis.summary.nextSteps) {
     if (!step.evidenceIds.length) continue;
     if (commitmentTitles.has(step.text.toLowerCase())) continue;
-    const ownerId =
-      resolveOwnerId(step.owner, participants) ??
-      participants[0]?.id ??
-      "unknown";
     actionItems.push({
       id: `${id}-a${actionItems.length + 1}`,
       text: step.text,
-      ownerId,
-      dueLabel: step.due ?? "TBD",
+      ownerId: resolveOwnerId(step.owner, participants),
+      dueLabel: step.due ?? undefined,
       status: "open",
-      outcomeId: outcomes.find((o) => o.type === "commitment")?.id ?? `${id}-o0`,
-      evidenceUtteranceId: firstEvidence(step.evidenceIds),
+      outcomeId:
+        outcomes.find((o) => o.type === "commitment")?.id ?? `${id}-o0`,
+      evidenceUtteranceId: step.evidenceIds[0],
     });
   }
 
