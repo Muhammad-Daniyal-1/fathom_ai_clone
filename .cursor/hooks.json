@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "python3 .cursor/hooks/agent-capture.py"
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "python3 .cursor/hooks/agent-capture.py"
+      }
+    ]
+  }
+}

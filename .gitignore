@@ -1,0 +1,41 @@
+# Keep agent capture logs in the repo (do not ignore .agent-logs/)
+.agent-logs/.state/
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+*.log
+
+# env
+.env
+.env.*
+!.env.example
+
+# typescript
+next-env.d.ts
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+graphify-out/
