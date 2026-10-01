@@ -1,15 +1,16 @@
+import Groq from "groq-sdk";
 import type { CanonicalAnalysis, ParsedUtterance } from "./schemas";
 import { extractJsonObject, validateCanonicalAnalysis } from "./validate";
 
-const GROQ_BASE = "https://api.groq.com/openai/v1";
-
-function getConfig() {
+function getClient() {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     throw new Error("GROQ_API_KEY is not configured");
   }
-  const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
-  return { apiKey, model };
+  return {
+    client: new Groq({ apiKey }),
+    model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+  };
 }
 
 const PROXY_ENV_KEYS = [
@@ -21,7 +22,7 @@ const PROXY_ENV_KEYS = [
   "all_proxy",
 ] as const;
 
-/** Avoid broken local proxy tunnels that block api.groq.com. */
+/** Avoid broken local proxy tunnels that block api.groq.com in some dev environments. */
 async function withClearedProxy<T>(fn: () => Promise<T>): Promise<T> {
   const saved: Partial<Record<(typeof PROXY_ENV_KEYS)[number], string | undefined>> =
     {};
@@ -40,63 +41,71 @@ async function withClearedProxy<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-async function groqRequest(body: Record<string, unknown>): Promise<string> {
-  const { apiKey } = getConfig();
-
-  return withClearedProxy(async () => {
-    let res: Response;
-    try {
-      res = await fetch(`${GROQ_BASE}/chat/completions`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-    } catch (err) {
-      const cause =
-        err instanceof Error && "cause" in err && err.cause
-          ? ` (${String(err.cause)})`
-          : "";
-      throw new Error(
-        `Unable to reach Groq API${cause}. Check network and GROQ_API_KEY.`,
-      );
-    }
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      // Never echo request headers/body that could contain the key
-      throw new Error(
-        `Groq request failed (${res.status}): ${errText.slice(0, 400) || res.statusText}`,
-      );
-    }
-
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) {
-      throw new Error("Groq returned an empty response");
-    }
-    return content;
-  });
-}
-
 async function groqChat(
   system: string,
   user: string,
-  temperature = 0.2,
+  opts?: { temperature?: number; jsonMode?: boolean },
 ): Promise<string> {
-  const { model } = getConfig();
-  return groqRequest({
-    model,
-    temperature,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-    response_format: { type: "json_object" },
+  const { client, model } = getClient();
+  const temperature = opts?.temperature ?? 0.2;
+  const jsonMode = opts?.jsonMode !== false;
+
+  return withClearedProxy(async () => {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const completion: any = await client.chat.completions.create({
+        model,
+        temperature,
+        max_completion_tokens: 4096,
+        response_format: jsonMode ? { type: "json_object" } : undefined,
+        reasoning_effort: "medium",
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+
+      const content = completion.choices?.[0]?.message?.content as
+        | string
+        | undefined;
+      if (!content) {
+        throw new Error("Groq returned an empty response");
+      }
+      return content;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // Retry without optional params if the model rejects them
+      if (
+        message.includes("response_format") ||
+        message.includes("reasoning_effort") ||
+        message.includes("400")
+      ) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const completion: any = await client.chat.completions.create({
+          model,
+          temperature,
+          max_completion_tokens: 4096,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+        });
+        const content = completion.choices?.[0]?.message?.content as
+          | string
+          | undefined;
+        if (!content) {
+          throw new Error("Groq returned an empty response");
+        }
+        return content;
+      }
+      if (message.includes("fetch failed") || message.includes("ENOTFOUND")) {
+        throw new Error(
+          "Unable to reach Groq API. Check network and GROQ_API_KEY.",
+        );
+      }
+      throw err instanceof Error ? err : new Error(message);
+    }
   });
 }
 
@@ -163,36 +172,13 @@ export async function analyzeMeeting(
 
   const user = `Analyze this meeting transcript. Utterance IDs are fixed — cite only these IDs.\n\n${JSON.stringify(transcriptPayload, null, 2)}`;
 
-  let content: string;
-  try {
-    content = await groqChat(ANALYZE_SYSTEM, user);
-  } catch (err) {
-    // Fallback without response_format if model rejects it
-    const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("response_format") || message.includes("400")) {
-      content = await groqChatWithoutJsonMode(ANALYZE_SYSTEM, user);
-    } else {
-      throw err;
-    }
-  }
+  const content = await groqChat(ANALYZE_SYSTEM, user, {
+    temperature: 0.2,
+    jsonMode: true,
+  });
 
   const parsed = extractJsonObject(content);
   return validateCanonicalAnalysis(parsed, utterances);
-}
-
-async function groqChatWithoutJsonMode(
-  system: string,
-  user: string,
-): Promise<string> {
-  const { model } = getConfig();
-  return groqRequest({
-    model,
-    temperature: 0.2,
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-  });
 }
 
 const ASK_SYSTEM = `You are a meeting Q&A assistant.
@@ -226,17 +212,10 @@ export async function askMeeting(input: {
     2,
   );
 
-  let content: string;
-  try {
-    content = await groqChat(ASK_SYSTEM, user, 0.3);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("response_format") || message.includes("400")) {
-      content = await groqChatWithoutJsonMode(ASK_SYSTEM, user);
-    } else {
-      throw err;
-    }
-  }
+  const content = await groqChat(ASK_SYSTEM, user, {
+    temperature: 0.2,
+    jsonMode: true,
+  });
 
   const parsed = extractJsonObject(content) as Record<string, unknown>;
   const answer =
