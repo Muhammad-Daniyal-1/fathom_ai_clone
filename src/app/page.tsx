@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   meetings,
   getParticipant,
   formatTimestamp,
   globalAskSuggestions,
+  registerParticipants,
 } from "@/data/meetings";
 import { productName } from "@/lib/brand";
 import { searchMeetings } from "@/lib/search";
+import { loadGeneratedMeetings } from "@/lib/generated-meetings";
+import type { Meeting } from "@/data/types";
 
 function WaveThumb({ hue, durationSec }: { hue: number; durationSec: number }) {
   return (
@@ -31,16 +34,28 @@ export default function HomePage() {
   const [askAnswer, setAskAnswer] = useState<string | null>(null);
   const [askPrompt, setAskPrompt] = useState("");
   const [query, setQuery] = useState("");
+  const [generated, setGenerated] = useState<Meeting[]>([]);
+
+  useEffect(() => {
+    const stored = loadGeneratedMeetings();
+    for (const s of stored) registerParticipants(s.participants);
+    setGenerated(stored.map((s) => s.meeting));
+  }, []);
+
+  const allMeetings = useMemo(
+    () => [...generated, ...meetings],
+    [generated],
+  );
 
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof meetings>();
-    for (const m of meetings) {
+    const map = new Map<string, Meeting[]>();
+    for (const m of allMeetings) {
       const list = map.get(m.groupLabel) ?? [];
       list.push(m);
       map.set(m.groupLabel, list);
     }
     return Array.from(map.entries());
-  }, []);
+  }, [allMeetings]);
 
   const hits = useMemo(() => searchMeetings(query), [query]);
 
@@ -59,16 +74,22 @@ export default function HomePage() {
           <div>
             <div className="text-lg font-semibold tracking-tight">{productName}</div>
             <div className="text-xs text-[var(--text-muted)]">
-              AI meeting notetaker · Reliable Meeting Outcomes
+              From meeting notes to reliable outcomes
             </div>
           </div>
         </div>
-        <div className="hidden items-center gap-2 sm:flex">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/analyze"
+            className="rounded-full bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:brightness-110"
+          >
+            Analyze Meeting
+          </Link>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search across meetings…"
-            className="w-64 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-2 text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)]"
+            className="hidden w-56 rounded-full border border-[var(--border)] bg-[var(--bg-elevated)] px-4 py-2 text-sm outline-none placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] sm:block md:w-64"
           />
         </div>
       </header>
@@ -105,7 +126,15 @@ export default function HomePage() {
 
       <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)]">
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--bg-elevated)]/80 p-5 backdrop-blur">
-          <h1 className="mb-4 text-2xl font-semibold tracking-tight">My Meetings</h1>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">My Meetings</h1>
+            <Link
+              href="/analyze"
+              className="rounded-full border border-[var(--border)] px-4 py-2 text-sm text-white/85 hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] sm:hidden"
+            >
+              Analyze Meeting
+            </Link>
+          </div>
           <div className="space-y-6">
             {grouped.map(([group, items]) => (
               <div key={group}>
@@ -121,21 +150,28 @@ export default function HomePage() {
                       >
                         <WaveThumb hue={m.waveformHue} durationSec={m.durationSec} />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{m.title}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="truncate font-medium">{m.title}</div>
+                            {!m.audioSrc && (
+                              <span className="shrink-0 rounded-full bg-[var(--accent-soft)] px-2 py-0.5 text-[10px] font-medium text-[var(--accent)]">
+                                AI
+                              </span>
+                            )}
+                          </div>
                           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-[var(--text-muted)]">
                             {m.description}
                           </p>
                           <div className="mt-2 flex items-center gap-2">
                             <div className="flex -space-x-1.5">
-                              {m.participantIds.map((id) => {
-                                const p = getParticipant(id);
+                              {m.participantIds.map((pid) => {
+                                const p = getParticipant(pid);
                                 return (
                                   <span
-                                    key={id}
+                                    key={pid}
                                     title={p?.name}
                                     className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--bg-elevated)] bg-[#2a3140] text-[10px] font-semibold"
                                   >
-                                    {p?.initials}
+                                    {p?.initials ?? "?"}
                                   </span>
                                 );
                               })}
@@ -202,7 +238,7 @@ export default function HomePage() {
                 runAsk(
                   askPrompt || "Ask anything",
                   match?.answer ??
-                    "Try a suggested question — this demo uses deterministic answers grounded in seeded meetings.",
+                    "Open a meeting and use Ask This Call for live grounded answers.",
                 );
               }}
             />
@@ -216,7 +252,7 @@ export default function HomePage() {
                 runAsk(
                   askPrompt || "Ask anything",
                   match?.answer ??
-                    "Try a suggested question — this demo uses deterministic answers grounded in seeded meetings.",
+                    "Open a meeting and use Ask This Call for live grounded answers.",
                 );
               }}
               aria-label="Send"

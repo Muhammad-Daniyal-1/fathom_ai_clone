@@ -109,12 +109,16 @@ export function PlaybackProvider({
 
   const seek = useCallback((time: number, opts?: { play?: boolean }) => {
     const audio = audioRef.current;
-    if (!audio) return;
+    // Text-only / AI-generated meetings may have no audio — still update time for highlight
+    if (!audio || !meeting.audioSrc) {
+      setCurrentTime(Math.max(0, time));
+      return;
+    }
     const clamped = Math.max(0, Math.min(time, audio.duration || time));
     audio.currentTime = clamped;
     setCurrentTime(clamped);
     if (opts?.play) void audio.play();
-  }, []);
+  }, [meeting.audioSrc]);
 
   const skip = useCallback(
     (delta: number) => {
@@ -134,9 +138,9 @@ export function PlaybackProvider({
       if (!u) return;
       setTab("transcript");
       setFollowPlayback(true);
-      seek(u.startTime, { play: true });
+      seek(u.startTime, { play: Boolean(meeting.audioSrc) });
     },
-    [meeting.transcript, seek],
+    [meeting.transcript, meeting.audioSrc, seek],
   );
 
   const value: PlaybackContextValue = {

@@ -106,8 +106,9 @@ function MeetingDetailInner({ shareHref }: { shareHref: string }) {
           <AudioPlayer />
           <AskRail />
           <p className="text-[10px] text-[var(--text-muted)]">
-            {productName} demo · capture intentionally stubbed · outcomes are
-            deterministic seed data
+            {meeting.audioSrc
+              ? `${productName} · Reliable Meeting Outcomes · evidence-linked`
+              : `${productName} · AI-analyzed transcript · evidence-linked outcomes`}
           </p>
         </aside>
       </div>

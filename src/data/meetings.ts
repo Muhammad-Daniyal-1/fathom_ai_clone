@@ -717,8 +717,17 @@ export function getMeeting(id: string): Meeting | undefined {
   return meetings.find((m) => m.id === id);
 }
 
+/** Runtime registry for AI-generated meeting speakers. */
+const dynamicParticipants: Record<string, Participant> = {};
+
+export function registerParticipants(list: Participant[]): void {
+  for (const p of list) {
+    dynamicParticipants[p.id] = p;
+  }
+}
+
 export function getParticipant(id: string): Participant | undefined {
-  return participants[id];
+  return participants[id] ?? dynamicParticipants[id];
 }
 
 export function formatTimestamp(seconds: number): string {

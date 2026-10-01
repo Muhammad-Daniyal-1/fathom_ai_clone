@@ -21,17 +21,25 @@ export function AudioPlayer() {
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-black/25 p-3">
-      <audio
-        ref={registerAudio}
-        src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}${meeting.audioSrc}`}
-        preload="metadata"
-        className="hidden"
-      />
+      {meeting.audioSrc ? (
+        <audio
+          ref={registerAudio}
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}${meeting.audioSrc}`}
+          preload="metadata"
+          className="hidden"
+        />
+      ) : null}
+      {!meeting.audioSrc && (
+        <p className="mb-2 text-center text-[11px] text-[var(--text-muted)]">
+          Transcript-only meeting · evidence still jumps to source utterances
+        </p>
+      )}
       <div className="mb-2 flex items-center justify-center gap-3">
         <button
           type="button"
           onClick={() => skip(-10)}
-          className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-white/5 hover:text-white"
+          disabled={!meeting.audioSrc}
+          className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-white/5 hover:text-white disabled:opacity-30"
           aria-label="Back 10 seconds"
         >
           −10s
@@ -39,7 +47,8 @@ export function AudioPlayer() {
         <button
           type="button"
           onClick={toggle}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-lg shadow-blue-500/20"
+          disabled={!meeting.audioSrc}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent)] text-white shadow-lg shadow-blue-500/20 disabled:opacity-40"
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? "❚❚" : "▶"}
@@ -47,7 +56,8 @@ export function AudioPlayer() {
         <button
           type="button"
           onClick={() => skip(10)}
-          className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-white/5 hover:text-white"
+          disabled={!meeting.audioSrc}
+          className="rounded-lg px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-white/5 hover:text-white disabled:opacity-30"
           aria-label="Forward 10 seconds"
         >
           +10s

@@ -133,14 +133,16 @@ export default async function SharePage({
           </div>
         </section>
 
-        <div className="mt-8">
-          <audio
-            controls
-            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}${meeting.audioSrc}`}
-            className="w-full"
-            preload="metadata"
-          />
-        </div>
+        {meeting.audioSrc ? (
+          <div className="mt-8">
+            <audio
+              controls
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}${meeting.audioSrc}`}
+              className="w-full"
+              preload="metadata"
+            />
+          </div>
+        ) : null}
       </article>
     </div>
   );
