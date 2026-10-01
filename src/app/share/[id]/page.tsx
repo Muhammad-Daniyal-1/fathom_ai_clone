@@ -4,8 +4,13 @@ import {
   formatTimestamp,
   getMeeting,
   getParticipant,
+  meetings,
 } from "@/data/meetings";
 import { outcomeMeta, productName } from "@/lib/brand";
+
+export function generateStaticParams() {
+  return meetings.map((m) => ({ id: m.id }));
+}
 
 export default async function SharePage({
   params,
@@ -129,7 +134,12 @@ export default async function SharePage({
         </section>
 
         <div className="mt-8">
-          <audio controls src={meeting.audioSrc} className="w-full" preload="metadata" />
+          <audio
+            controls
+            src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}${meeting.audioSrc}`}
+            className="w-full"
+            preload="metadata"
+          />
         </div>
       </article>
     </div>

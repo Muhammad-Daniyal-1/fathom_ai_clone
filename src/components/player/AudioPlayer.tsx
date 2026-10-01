@@ -23,7 +23,7 @@ export function AudioPlayer() {
     <div className="rounded-xl border border-[var(--border)] bg-black/25 p-3">
       <audio
         ref={registerAudio}
-        src={meeting.audioSrc}
+        src={`${process.env.NEXT_PUBLIC_BASE_PATH || ""}${meeting.audioSrc}`}
         preload="metadata"
         className="hidden"
       />

@@ -46,6 +46,12 @@ Research notes: [`recon/`](./recon/) (frozen after session 01).
 
 ---
 
+## Live links
+
+- **Public repo:** https://github.com/Muhammad-Daniyal-1/fathom_ai_clone
+- **GitHub Pages (after Actions):** https://muhammad-daniyal-1.github.io/fathom_ai_clone/
+- Local: `npm run build && npx serve out` (or `npm run dev`)
+
 ## Stack
 
 - Next.js 15 (App Router) · TypeScript · Tailwind CSS v4  
