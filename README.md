@@ -188,19 +188,6 @@ This is not a formal security audit — it describes what the app implements tod
 
 Brief was built to explore production AI engineering beyond a chat interface: external meeting infrastructure, asynchronous webhooks, transcript normalization, structured LLM outputs, evidence grounding, authentication, and a complete full-stack product workflow.
 
-## Screenshots
-
-Add three screenshots under `docs/screenshots/` (or update the links below):
-
-1. **Landing** — hero + CTAs  
-2. **Dashboard** — Capture Meeting + meeting library  
-3. **Meeting intelligence** — summary / outcomes / Ask Brief  
-
-```markdown
-![Landing](docs/screenshots/landing.png)
-![Dashboard](docs/screenshots/dashboard.png)
-![Meeting intelligence](docs/screenshots/meeting.png)
-```
 
 ## License
 
