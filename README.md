@@ -4,12 +4,6 @@ AI meeting intelligence that turns real conversations into decisions, action ite
 
 **Live demo:** [https://fathom-ai-clone-blond.vercel.app](https://fathom-ai-clone-blond.vercel.app)
 
-## Demo
-
-🎥 Watch the 3-minute product walkthrough: [Loom video](LOOM_URL_HERE)
-
-*(Replace `LOOM_URL_HERE` with your Loom link after recording.)*
-
 ## What is Brief?
 
 Brief is a production-shaped AI meeting intelligence application. Users send **Brief Notetaker** into a meeting through Recall.ai, or import an existing transcript by paste or `.txt` upload.
@@ -23,7 +17,6 @@ The product focus is reliable post-meeting intelligence — not a chat toy and n
 | | |
 |---|---|
 | **Production** | [https://fathom-ai-clone-blond.vercel.app](https://fathom-ai-clone-blond.vercel.app) |
-| **Demo video** | [Add Loom URL](LOOM_URL_HERE) |
 
 Sign in with Google to capture meetings, or open **View Demo** / Analyze to try the Q4 example without an account.
 
